@@ -5,6 +5,10 @@ import numpy as np
 
 
 class Dobbs:
+    """
+    Init dobbs will internally store an MILP representation
+    of the game provided as the only constructor argument.
+    """
     def __init__(self, game):
         # init the game as an MILP
         self.prob = plp.LpProblem(name="DOBBS", sense=plp.LpMaximize)
@@ -44,28 +48,26 @@ class Dobbs:
                                                                   range(Q), \
                                                                   range(L))])
 
-        # TODO remove this line
-        print(self.prob.objective)
-        # const. 1 for all l in L
+        # Constraint. 1
         for l in range(L):
             self.prob += sum([self.z[i,j,l] for i,j in \
                                 itertools.product(range(X), range(Q))]) == 1, ""
 
-        # const. 2 for all l in L and i in X
+        # Constraint. 2
         for i,l in itertools.product(range(X), range(L)):
             self.prob += sum([self.z[i,j,l] for j in range(Q)]) <= 1, ""
 
-        # const 3 for all l in L
+        # Constraint 3
         for j, l in itertools.product(range(Q), range(L)):
             self.prob += sum([self.z[i,j,l] for i in range(X)]) >= \
                                                                 self.q[j,l], ""
             self.prob += sum([self.z[i,j,l] for i in range(X)]) <= 1, ""
 
-        # const 4
+        # Constraint 4
         for l in range(L):
             self.prob += sum([self.q[j,l] for j in range(Q)]) == 1, ""
 
-        # const 5
+        # Constraint 5
         for j, l in itertools.product(range(Q), range(L)):
             self.prob += self.a[l] - sum([self.C[i,j,l] * sum(self.z[i,:,l]) \
                                           for i in range(X)]) >= 0
@@ -73,7 +75,7 @@ class Dobbs:
                                                     for i in range(X)]) <= \
                                                     (1-self.q[j,l])*9999
 
-        # const 6
+        # Constraint 6
         for l in range(L):
             self.prob += sum([self.z[i,j,l] for i,j in \
                             itertools.product(range(X), range(Q))]) == \
@@ -81,16 +83,20 @@ class Dobbs:
                             itertools.product(range(X), range(Q))])
 
     def write_problem(self, name="problem.MPS"):
+        """
+        Writes internally stored MILP to .MPS format in working dir
+        """
         self.prob.writeMPS(name)
 
     def solve(self):
-        self.prob.solve()
-        print(self.prob.solutionTime)
+        # use GLPK solver and keep files
+        self.prob.solve(plp.GLPK(keepFiles=1, msg=0))
+        print("Status: {}".format(plp.LpStatus[self.prob.status]))
+        print("Solution time: {}".format(self.prob.solutionTime))
 
-
-x = PatrolGame(7,2,4)
+# for testing
+x = PatrolGame(4,2,4)
 print("game generated")
 p = Dobbs(x)
 print("dobbs initialized")
-p.write_problem()
 p.solve()
