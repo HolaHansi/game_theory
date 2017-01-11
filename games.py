@@ -59,22 +59,26 @@ class PatrolGame:
                     if j in self.X[i]:
                         index = self.X[i].index(j)
                         p = self.Pl[index]
-                        attackerPayOff[i,j] = (p * -self.c_q[a]) + (1-p)*self.v_q[a, j]
-                        defenderPayOff[i,j] = (p * self.c_x[a]) + ((1-p)*(-self.v_x[a,j]))
+                        attackerPayOff[i,j] = (p * -self.c_q[a]) + \
+                                                (1-p)*self.v_q[a, j]
+                        defenderPayOff[i,j] = (p * self.c_x[a]) + \
+                                                ((1-p)*(-self.v_x[a,j]))
                     else:
-                        attackerPayOff[i,j] = v_q(a,j)
-                        defenderPayOff[i,j] = -v_x(a,j)
+                        attackerPayOff[i,j] = self.v_q[a,j]
+                        defenderPayOff[i,j] = -self.v_x[a,j]
             # normalize payoffs
             attackerPayOff = attackerPayOff - np.amin(attackerPayOff)
-            attackerPayOff = attackerPayOff / (np.amax(attackerPayOff) - np.amin(attackerPayOff))
+            attackerPayOff = attackerPayOff / (np.amax(attackerPayOff) - \
+                                               np.amin(attackerPayOff))
 
             defenderPayOff = defenderPayOff - np.amin(defenderPayOff)
-            defenderPayOff = defenderPayOff / (np.amax(defenderPayOff) - np.amin(defenderPayOff))
+            defenderPayOff = defenderPayOff / (np.amax(defenderPayOff) - \
+                                               np.amin(defenderPayOff))
             # add to payoffs
             self.attackerPayOffs[:,:,a] = attackerPayOff
             self.defenderPayOffs[:,:,a] = defenderPayOff
 
-            # generate probability distribution over adversaries
-            # ASSUMPTION: uniform distribution
-            self.adversaryProb = np.zeros(self.num_adversaries)
-            self.adversaryProb = 1.0 / self.num_adversaries
+        # generate probability distribution over adversaries
+        # ASSUMPTION: uniform distribution
+        self.adversaryProb = np.zeros(self.num_adversaries)
+        self.adversaryProb[:] = 1.0 / self.num_adversaries
