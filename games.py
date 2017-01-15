@@ -1,12 +1,22 @@
 import itertools
 import numpy as np
 
-# implement class for domain patrol game
-
 class PatrolGame:
     """
     A class implementing the patrol game as specified
-    in the paper
+    in "An Efficient Heuristic for Security Against Multiple Adversaries in Stackelberg
+    Games" Paruchi et al.
+    The PatrolGame is a bayesian stackelberg game and holds the following values:
+    m: number of houses
+    d: length of patrol
+    num_adversaries: possible types of adversaries
+    v_x[l,m]: security agent's valulation of house m when facing adversary l
+    v_q[l,m]: Adversary's valuation of house m when of type l
+    c_x[l]: security agent's reward for catching adversary of type l
+    c_q[l]: Adversaries cost of getting caught when of type l
+    TODO: Finish this description
+
+
     """
     def __init__(self, m, d, num_adversaries):
         # save args as instance variables
@@ -82,3 +92,40 @@ class PatrolGame:
         # ASSUMPTION: uniform distribution
         self.adversaryProb = np.zeros(self.num_adversaries)
         self.adversaryProb[:] = 1.0 / self.num_adversaries
+
+class NormalFormGame:
+    """
+    NormalFormGame class is mainly used for transforming bayesian
+    games into Normal Form games using the Harsanyi transformation
+    """
+    def __init__(self, bayesian_game):
+        # Takes a Bayesian Stackelberg Game and transforms to
+        # normalform using the Harsanye Transformation
+        self.C_original = bayesian_game.attackerPayOffs
+        self.R_original = bayesian_game.defenderPayOffs
+        self.p = bayesian_game.adversaryProb
+        self.X, self.Q, self.L = self.R_original.shape
+        # generate attacker strategies
+        self.q =list(itertools.product(*[range(self.Q) for i in range(self.L)]))
+        # the payoff matrix of the normal form has Q^R
+        self.R = np.ndarray(shape=(self.X, self.Q**self.L))
+        self.C = np.ndarray(shape=(self.X, self.Q**self.L))
+        # construct payoff matrix
+        for j, pure_strat in enumerate(self.q):
+            for i in range(self.X):
+                self.R[i,j], self.C[i,j] = self._get_payoffs(i, pure_strat)
+
+    def _get_payoffs(self, i, pure_strat):
+        """
+        The payoff given a pure strategy e.g. (2,3,4) where l is 3
+        and adversary commits to playing 2 if l=0, 3 if l=1 etc.
+        is the probability of facing adversary type l times the payoff
+        of that situation occuring.
+        """
+        payoff_defender = 0
+        payoff_attacker = 0
+        for l in range(self.L):
+            payoff_defender += self.R_original[i,pure_strat[l],l]*self.p[l]
+            payoff_attacker += self.C_original[i,pure_strat[l],l]*self.p[l]
+        return (payoff_defender, payoff_attacker)
+

@@ -91,6 +91,11 @@ class Dobbs:
     def solve(self):
         # use GLPK solver and keep files
         self.prob.solve(plp.GLPK(keepFiles=1, msg=0))
+        # the solution is implicitly stored in prob instance var
+        # for comparison with other algos e.g. multipleLP, save
+        # the objective value as an instance var
+        self.opt_value = plp.value(self.prob.objective)
+
         print("Status: {}".format(plp.LpStatus[self.prob.status]))
         print("Solution time: {}".format(self.prob.solutionTime))
 
