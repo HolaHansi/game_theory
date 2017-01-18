@@ -20,6 +20,7 @@ class Dobbs:
 
         # get dimensions of a game payoff matrix - needed to generate LP vars
         X, Q, L = self.R.shape
+        self.X, self.Q, self.L = (X, Q, L)
 
         # init z_ijl vars as lp variables
         self.z = np.ndarray(shape=(X,Q,L), dtype=type(plp.LpVariable("dummy")))
@@ -76,11 +77,9 @@ class Dobbs:
                                                     (1-self.q[j,l])*9999
 
         # Constraint 6
-        for l in range(L):
-            self.prob += sum([self.z[i,j,l] for i,j in \
-                            itertools.product(range(X), range(Q))]) == \
-                            sum([self.z[i,j,0] for i,j in \
-                            itertools.product(range(X), range(Q))])
+        for i, l in itertools.product(range(X), range(L)):
+            self.prob += sum([self.z[i,j,l] for j in range(Q)]) == \
+                            sum([self.z[i,j,0] for j in range(Q)])
 
     def write_problem(self, name="problem.MPS"):
         """
@@ -90,18 +89,25 @@ class Dobbs:
 
     def solve(self):
         # use GLPK solver and keep files
-        self.prob.solve(plp.GLPK(keepFiles=1, msg=0))
+        self.prob.solve(plp.GLPK(keepFiles=0, msg=0))
         # the solution is implicitly stored in prob instance var
         # for comparison with other algos e.g. multipleLP, save
         # the objective value as an instance var
         self.opt_value = plp.value(self.prob.objective)
-
-        print("Status: {}".format(plp.LpStatus[self.prob.status]))
-        print("Solution time: {}".format(self.prob.solutionTime))
+        # derive and save opt_x
+        self.opt_x = np.zeros((self.X))
+        for i in range(self.X):
+            for j in range(self.Q):
+                if plp.value(self.z[i,j,0]) > 0:
+                    self.opt_x[i] = plp.value(self.z[i,j,0])
+                    break
+        self.status = plp.LpStatus[self.prob.status]
+        self.solution_time = self.prob.solutionTime
 
 # for testing
-x = PatrolGame(4,2,4)
-print("game generated")
-p = Dobbs(x)
-print("dobbs initialized")
-p.solve()
+# p = Dobbs(x)
+# print("dobbs initialized")
+# p.solve()
+# f = np.vectorize(plp.value)
+# print(p.opt_x)
+# print(p.opt_x.sum())
