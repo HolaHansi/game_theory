@@ -41,16 +41,16 @@ class MultipleLP:
 
     def solve(self):
         # solve each LP sequentially
-        self.solutionTime = 0
+        self.solution_time = 0
         for lp in self.LPs:
             lp['prob'].solve(plp.GLPK(keepFiles=0, msg=0))
-            self.solutionTime += lp['prob'].solutionTime
+            self.solution_time += lp['prob'].solutionTime
 
         # select the LP that yielded the highest objective value
         # get list of objective values
         objective_values = list(map(lambda x: plp.value(x['prob'].objective), \
                                self.LPs))
-        print(objective_values)
+        # print(objective_values)
         # print(objective_values)
         opt_q, opt_value = max(enumerate(objective_values), \
                                key=operator.itemgetter(1))
