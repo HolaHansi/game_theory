@@ -4,9 +4,10 @@ from dobbs import Dobbs
 from multipleLP import MultipleLP
 
 # mlp can't feasibly handle more than 4 houses.
-MAX_M = 4
+# m = 4, a=14
+MAX_M = 3
 D = 2
-MAX_A = 14
+MAX_A = 5
 print("MAX_M: {}".format(MAX_M))
 print("MAX_A: {}".format(MAX_A))
 
@@ -19,7 +20,7 @@ for m in range(2,MAX_M+1):
         # TODO: sol_time should be an average over 20
         dob_sols = []
         mlp_sols = []
-        for i in range(20):
+        for i in range(2):
             # randomly games
             b_game = PatrolGame(m, 2, a)
             n_game = NormalFormGame(b_game)
