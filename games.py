@@ -129,3 +129,25 @@ class NormalFormGame:
             payoff_attacker += self.C_original[i,pure_strat[l],l]*self.p[l]
         return (payoff_defender, payoff_attacker)
 
+class SecurityGame:
+    """
+    A security game is a non-bayesian game in which the payoffs
+    are described in terms of coverage: covered vs. uncovered.
+    first row is uncovered, second row is covered payoff.
+    """
+    def __init__(self, num_targets, max_coverage):
+        self.attackerPayOffs = np.random.rand(2,num_targets)
+        self.defenderPayOffs = np.random.rand(2,num_targets)
+        self.num_targets = num_targets
+        self.max_coverage = max_coverage
+
+        self.attackerPayOffs[0,:] = self.attackerPayOffs[0,:]*100
+        self.defenderPayOffs[0,:] = self.defenderPayOffs[0,:]*-100
+        self.attackerPayOffs[1,:] = self.attackerPayOffs[1,:]*-100
+        self.defenderPayOffs[1,:] = self.defenderPayOffs[1,:]*100
+
+
+x = SecurityGame(10, 3)
+print(x.attackerPayOffs)
+print(x.defenderPayOffs)
+

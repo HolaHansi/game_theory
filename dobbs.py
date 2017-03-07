@@ -1,8 +1,7 @@
-from games import PatrolGame
+import games import PatrolGame
 import itertools
 import pulp as plp
 import numpy as np
-
 
 class Dobbs:
     """
