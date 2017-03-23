@@ -51,103 +51,231 @@ class PatrolGame:
         for index in range(len(self.Pl)):
             self.Pl[index] = 1 - (float((index+1)) / (d+1))
         # - generate payoff matrices
-        self.attackerPayOffs = np.ndarray(shape=(len(self.X),
+        self.attacker_payoffs = np.ndarray(shape=(len(self.X),
                                                  len(self.Q),
                                                  self.num_adversaries),
                                           dtype=float
                                           )
-        self.defenderPayOffs = np.ndarray(shape=(len(self.X),
+        self.defender_payoffs = np.ndarray(shape=(len(self.X),
                                                  len(self.Q),
                                                  self.num_adversaries),
                                           dtype=float
                                           )
         for a in range(self.num_adversaries):
-            attackerPayOff = np.zeros((len(self.X), len(self.Q)))
-            defenderPayOff = np.zeros((len(self.X), len(self.Q)))
+            attacker_payoff = np.zeros((len(self.X), len(self.Q)))
+            defender_payoff = np.zeros((len(self.X), len(self.Q)))
             for i in range(len(self.X)):
                 for j in range(len(self.Q)):
                     if j in self.X[i]:
                         index = self.X[i].index(j)
                         p = self.Pl[index]
-                        attackerPayOff[i,j] = (p * -self.c_q[a]) + \
+                        attacker_payoff[i,j] = (p * -self.c_q[a]) + \
                                                 (1-p)*self.v_q[a, j]
-                        defenderPayOff[i,j] = (p * self.c_x[a]) + \
+                        defender_payoff[i,j] = (p * self.c_x[a]) + \
                                                 ((1-p)*(-self.v_x[a,j]))
                     else:
-                        attackerPayOff[i,j] = self.v_q[a,j]
-                        defenderPayOff[i,j] = -self.v_x[a,j]
+                        attacker_payoff[i,j] = self.v_q[a,j]
+                        defender_payoff[i,j] = -self.v_x[a,j]
             # normalize payoffs
-            attackerPayOff = attackerPayOff - np.amin(attackerPayOff)
-            attackerPayOff = attackerPayOff / (np.amax(attackerPayOff) - \
-                                               np.amin(attackerPayOff))
+            attacker_payoff -= np.amin(attacker_payoff)
+            attacker_payoff = attacker_payoff / (np.amax(attacker_payoff) - \
+                                               np.amin(attacker_payoff))
 
-            defenderPayOff = defenderPayOff - np.amin(defenderPayOff)
-            defenderPayOff = defenderPayOff / (np.amax(defenderPayOff) - \
-                                               np.amin(defenderPayOff))
+            defender_payoff -= np.amin(defender_payoff)
+            defender_payoff = defender_payoff / (np.amax(defender_payoff) - \
+                                               np.amin(defender_payoff))
             # add to payoffs
-            self.attackerPayOffs[:,:,a] = attackerPayOff
-            self.defenderPayOffs[:,:,a] = defenderPayOff
+            self.attacker_payoffs[:,:,a] = attacker_payoff
+            self.defender_payoffs[:,:,a] = defender_payoff
 
         # generate probability distribution over adversaries
         # ASSUMPTION: uniform distribution
-        self.adversaryProb = np.zeros(self.num_adversaries)
-        self.adversaryProb[:] = 1.0 / self.num_adversaries
+        self.adversary_probability = np.zeros(self.num_adversaries)
+        self.adversary_probability[:] = 1.0 / self.num_adversaries
 
 class NormalFormGame:
-    """
-    NormalFormGame class is mainly used for transforming bayesian
-    games into Normal Form games using the Harsanyi transformation
-    """
-    def __init__(self, bayesian_game):
-        # Takes a Bayesian Stackelberg Game and transforms to
-        # normalform using the Harsanye Transformation
-        self.C_original = bayesian_game.attackerPayOffs
-        self.R_original = bayesian_game.defenderPayOffs
-        self.p = bayesian_game.adversaryProb
-        self.X, self.Q, self.L = self.R_original.shape
-        # generate attacker strategies
-        self.q =list(itertools.product(*[range(self.Q) for i in range(self.L)]))
-        # the payoff matrix of the normal form has Q^R
-        self.R = np.ndarray(shape=(self.X, self.Q**self.L))
-        self.C = np.ndarray(shape=(self.X, self.Q**self.L))
-        # construct payoff matrix
-        for j, pure_strat in enumerate(self.q):
-            for i in range(self.X):
-                self.R[i,j], self.C[i,j] = self._get_payoffs(i, pure_strat)
+    def __init__(self, **kwargs):
+        """
+        Transform given game into normalform if it's compact form,
+        Conduct harsanyi transformation if requested or if given game is already
+        in normalform.
+        Otherwise, generate a random game given arguments.
+        """
+        if "game" in kwargs.keys():
+            self.game = kwargs['game']
+
+            if self.game.type == "compact":
+                # produce the normal form
+                self._compact_to_normal()
+                if kwargs["harsanyi"]:
+                    # treat self as given game
+                    self.game = self
+                    # perform harsanyi
+                    self._harsanyi()
+
+            elif self.game.type == "normal":
+                # game already in normal form, so perform harsanyi
+                self._harsanyi()
+
+        # game was not provided, so generate a random game
+        else:
+            self._generate_new_game(kwargs)
+
+        # record the type of this game
+        self.type = "normal"
+
+    def _generate_new_game(self, kwargs):
+        """
+        Generate a new game
+        """
+        self.num_defender_strategies = kwargs['num_defender_strategies']
+        self.num_attacker_strategies = kwargs['num_attacker_strategies']
+        self.num_attacker_types = kwargs['num_attacker_types']
+
+        # uniform distribution over attacker types
+        self.attacker_type_probability = np.zeros((self.num_attacker_types))
+        self.attacker_type_probability += (1.0 / self.num_attacker_types)
+
+        # init payoff matrices
+        self.attacker_payoffs = np.random.rand(self.num_defender_strategies,
+                                               self.num_attacker_strategies,
+                                               self.num_attacker_types)
+
+        self.defender_payoffs = np.random.rand(self.num_defender_strategies,
+                                               self.num_attacker_strategies,
+                                               self.num_attacker_types)
+
+        # payoffs should be between -100 and 100
+        self.attacker_payoffs = (self.attacker_payoffs * 200) - 100
+        self.defender_payoffs = (self.defender_payoffs * 200) - 100
+
+
+
+    def _compact_to_normal(self):
+        """
+        every possible comination of pure coverages is a defender strategy
+        get the number of possible cominations
+        combinations =
+        """
+
+        # save the attacker type probability
+        self.attacker_type_probability = self.game.attacker_type_probability
+
+        # compute all possible defender strategies i.e. comb. of coverage
+        defender_strategies = list (
+                                    itertools.combinations(
+                                    range(self.game.num_targets),
+                                    self.game.max_coverage)
+                                    )
+
+        self.num_defender_strategies = len(defender_strategies)
+        self.num_attacker_strategies = self.game.num_targets
+        self.num_attacker_types = self.game.num_attacker_types
+
+        # init payoff matrices
+        self.defender_payoffs = np.zeros((self.num_defender_strategies,
+                                         self.game.num_targets,
+                                         self.game.num_attacker_types ))
+        self.attacker_payoffs = np.zeros((self.num_defender_strategies,
+                                         self.game.num_targets,
+                                         self.game.num_attacker_types ))
+
+        # calculate the appropriate payoffs
+        for t in range(self.game.num_targets):
+            for i, strat in enumerate(defender_strategies):
+                if t in strat:
+                    # t is covered
+                    self.defender_payoffs[i, t, :] = \
+                        self.game.defender_covered[t, :]
+                    self.attacker_payoffs[i, t, :] = \
+                        self.game.attacker_covered[t, :]
+                else:
+                    # t is not covered
+                    self.defender_payoffs[i, t, :] = \
+                        self.game.defender_uncovered[t, :]
+                    self.attacker_payoffs[i, t, :] = \
+                        self.game.attacker_uncovered[t, :]
+
+    def _harsanyi(self):
+        """
+        Compute the harsanyi transformed game i.e. turn payoffs into
+        a single attacker_type.
+        """
+
+        # get dimensions of payoff matrices
+        self.num_defender_strategies = self.game.num_defender_strategies
+        self.num_attacker_types = self.game.num_attacker_types
+        self.num_attacker_strategies = self.game.num_attacker_strategies ** \
+                                        self.num_attacker_types
+
+        # generate attacker pure strategies
+        attacker_pure_strategies = \
+            list(itertools.product(*[range(self.game.num_attacker_strategies)
+                                for i in range(self.num_attacker_types)]))
+
+        # initiate new defender and attacker payoff matrices
+        self.defender_payoffs = np.zeros((self.num_defender_strategies,
+                                          self.num_attacker_strategies,
+                                          1))
+        self.attacker_payoffs = np.zeros((self.num_defender_strategies,
+                                          self.num_attacker_strategies,
+                                          1))
+
+        # compute payoffs
+        for j, pure_strat in enumerate(attacker_pure_strategies):
+            for i in range(self.num_defender_strategies):
+                self.defender_payoffs[i, j, 0], self.attacker_payoffs[i, j, 0] \
+                    = self._get_payoffs(i, pure_strat)
 
     def _get_payoffs(self, i, pure_strat):
         """
-        The payoff given a pure strategy e.g. (2,3,4) where l is 3
-        and adversary commits to playing 2 if l=0, 3 if l=1 etc.
-        is the probability of facing adversary type l times the payoff
-        of that situation occuring.
+        compute the defender and attacker expected payoff for a given
+        pure strategy.
         """
         payoff_defender = 0
         payoff_attacker = 0
-        for l in range(self.L):
-            payoff_defender += self.R_original[i,pure_strat[l],l]*self.p[l]
-            payoff_attacker += self.C_original[i,pure_strat[l],l]*self.p[l]
+
+        for l in range(self.num_attacker_types):
+            payoff_defender += \
+            self.game.defender_payoffs[i, pure_strat[l], l] * \
+                self.game.attacker_type_probability[l]
+            payoff_attacker += \
+            self.game.attacker_payoffs[i, pure_strat[l], l] * \
+                self.game.attacker_type_probability[l]
+
         return (payoff_defender, payoff_attacker)
 
 class SecurityGame:
     """
-    A security game is a non-bayesian game in which the payoffs
-    are described in terms of coverage: covered vs. uncovered.
-    first row is uncovered, second row is covered payoff.
+    A security game is a non-bayesian game in which the payoffs for targets
+    are given by their coverage status.
+    Covered targets yield higher utilities for the defender, and lower
+    utilities for the attacker, whilst uncovered targets yield negative
+    utilities for the defender and positive utilities for the attacker.
     """
-    def __init__(self, num_targets, max_coverage):
-        self.attackerPayOffs = np.random.rand(2,num_targets)
-        self.defenderPayOffs = np.random.rand(2,num_targets)
+    def __init__(self, num_targets, max_coverage, num_attacker_types = 1):
         self.num_targets = num_targets
         self.max_coverage = max_coverage
+        self.num_attacker_types = num_attacker_types
 
-        self.attackerPayOffs[0,:] = self.attackerPayOffs[0,:]*100
-        self.defenderPayOffs[0,:] = self.defenderPayOffs[0,:]*-100
-        self.attackerPayOffs[1,:] = self.attackerPayOffs[1,:]*-100
-        self.defenderPayOffs[1,:] = self.defenderPayOffs[1,:]*100
+        # uniform distribution over attacker types
+        self.attacker_type_probability = np.zeros((self.num_attacker_types))
+        self.attacker_type_probability += (1.0 / self.num_attacker_types)
 
+        # generate two arrays of random floats for defender and attacker
+        attacker_random = np.random.rand(2,num_targets, num_attacker_types)
+        defender_randoms = np.random.rand(2,num_targets, num_attacker_types)
 
-x = SecurityGame(10, 3)
-print(x.attackerPayOffs)
-print(x.defenderPayOffs)
+        # for attacker uncovered targets yield positive utilities, and covered
+        # yields negative utilities.
+        self.attacker_uncovered = attacker_random[0,:,:] * 100
+        self.attacker_covered = attacker_random[1,:,:] * -100
+
+        # for defender uncovered targets yield negative utilities, and covered
+        # targets yield positive utilities.
+        self.defender_uncovered = defender_randoms[0,:,:] * -100
+        self.defender_covered = defender_randoms[1,:,:] * 100
+
+        # store the type of this representation
+        self.type = "compact"
 

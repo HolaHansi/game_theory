@@ -1,19 +1,21 @@
 # from games import PatrolGame, NormalFormGame
+import time
 import operator
 # from dobbs import Dobbs
 import pulp as plp
 
 class MultipleLP:
-    def __init__(self, normal_game):
+    def __init__(self, game, attacker_type=0):
         # number of LPs is number of pure attacker strategies
-        self.X, self.Q = normal_game.R.shape
+        self.X = game.num_defender_strategies
+        self.Q = game.num_attacker_strategies
         self.LPs = []
 
         # get payoffs
-        self.C = normal_game.C
-        self.R = normal_game.R
+        self.C = game.attacker_payoffs[:, :, attacker_type]
+        self.R = game.defender_payoffs[:, :, attacker_type]
 
-        # construct an LP for each pure strategy
+        # construct an LP for each pure strategy
         for j in range(self.Q):
             # define problem
             prob = plp.LpProblem(name="LP-{}".format(j), sense=plp.LpMaximize)
@@ -28,7 +30,7 @@ class MultipleLP:
             prob += sum([lp_x[i] * self.R[i,j] for i in range(self.X)])
 
             # Constraint 1 - x is a probability distribution
-            prob += sum(lp_x) <= 1, "sum of lp_x"
+            prob += sum(lp_x) == 1, "sum of lp_x"
 
             # Constraint 3 - q must be a best response to policy x
             for j_prime in range(self.Q):
@@ -41,50 +43,27 @@ class MultipleLP:
 
     def solve(self):
         # solve each LP sequentially
-        self.solution_time = 0
-        for lp in self.LPs:
+        start_time = time.time()
+        for j, lp in enumerate(self.LPs):
             lp['prob'].solve(plp.GLPK(keepFiles=0, msg=0))
-            self.solution_time += lp['prob'].solutionTime
+
+        # save solution time (without overhead)
+        self.solution_time = time.time() - start_time
 
         # select the LP that yielded the highest objective value
-        # get list of objective values
-        objective_values = list(map(lambda x: plp.value(x['prob'].objective), \
-                               self.LPs))
-        # print(objective_values)
-        # print(objective_values)
+        optimal_LPs = filter(lambda x: x['prob'].status == plp.LpStatusOptimal,
+                             self.LPs)
+        objective_values = list(map(lambda x: plp.value(x['prob'].objective),
+                               optimal_LPs))
+
         opt_q, opt_value = max(enumerate(objective_values), \
                                key=operator.itemgetter(1))
-        # save the solution in class instance methods
-        self.opt_q = opt_q
-        self.opt_value = opt_value
-        self.opt_x = list(map(lambda x: plp.value(x), self.LPs[opt_q]['x']))
-        # print("pure strat: {}".format(opt_q))
-        # print("solutionTime: {}".format(solutionTime))
-        # print("opt_value: {}".format(opt_value))
 
-# solve using both dobbs and multipleLPs
-# bayse_game = PatrolGame(3,2,2)
-# norm_game = NormalFormGame(bayse_game)
-# mlp = MultipleLP(norm_game)
-# dob = Dobbs(bayse_game)
-# mlp.solve()
-# dob.solve()
-# print("print x policy from dobbs")
-# print(dob.opt_x)
-# print("print x policy from mlp")
-# print(mlp.opt_x)
-# print("=== mlp.opt_val: {}".format(mlp.opt_value))
-# print("=== dob.opt_val: {}".format(dob.opt_value))
-# print("opt q from mlp: {}".format(mlp.opt_q))
+        # save the solution in instance variables
+        self.opt_attacker_pure_strategy = opt_q
+        self.opt_defender_payoff = opt_value
+        self.opt_defender_mixed_strategy  = \
+                        list(map(lambda x: plp.value(x), self.LPs[opt_q]['x']))
 
-# print("SEE IF SOLUTIONS ARE EQUIVALENT")
-# sol_mlp = 0
-# sol_dob = 0
-# for x in range(len(mlp.opt_x)):
-#     sol_mlp += mlp.R[x,mlp.opt_q]*mlp.opt_x[x]
-# import itertools
-# for i, j, l in itertools.product(range(dob.X), range(dob.Q), range(dob.L)):
-#     sol_dob += dob.p[l]*dob.R[i,j,l]*(plp.value(dob.q[j,l])*dob.opt_x[i])
-
-# print(sol_mlp)
-# print(sol_dob)
+        # save solution time with overhead
+        self.solution_time_with_overhead = time.time() - start_time
