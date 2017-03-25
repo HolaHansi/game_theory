@@ -1,7 +1,7 @@
 import unittest
 from games import SecurityGame, NormalFormGame
 from dobbs import Dobbs
-from multipleLP import MultipleLP
+from multipleLP import MultipleLP, Multiple_SingleLP
 from eraser import Eraser
 from origami import Origami
 from origami_milp import OrigamiMILP
@@ -14,7 +14,7 @@ class TestSolvers(unittest.TestCase):
         Create Games:
         1) Set up a security game, generate corresponding norm_form
         and harsanyi-transformed norm_form game.
-        2) Set up at large security game
+        2) Set up a large non-bayesian security game
         3) Set up bayesian norm_form, generate corresponding harsanyi-
         transformed norm_form game.
         4) Set up norm_form game.
@@ -32,7 +32,7 @@ class TestSolvers(unittest.TestCase):
 
 
         # part 2
-        self.large_sec_game = SecurityGame(700, 30,1)
+        self.large_sec_game = SecurityGame(100, 30,1)
 
         # part 3
         self.bayse_sec_game = SecurityGame(5,3,2)
@@ -71,37 +71,41 @@ class TestSolvers(unittest.TestCase):
 
         # part 2 (large security game)
         print("solving part 2")
-        self.p1_large_origami = Origami(self.large_sec_game)
-        self.p1_large_origami_milp = OrigamiMILP(self.large_sec_game)
-        self.p1_large_eraser = Eraser(self.large_sec_game)
+        self.p2_large_origami = Origami(self.large_sec_game)
+        self.p2_large_origami_milp = OrigamiMILP(self.large_sec_game)
+        self.p2_large_eraser = Eraser(self.large_sec_game)
 
-        self.p1_large_origami.solve()
-        self.p1_large_origami_milp.solve()
-        self.p1_large_eraser.solve()
+        self.p2_large_origami.solve()
+        self.p2_large_origami_milp.solve()
+        self.p2_large_eraser.solve()
 
         # part 3 (bayseian security games)
         print("solving part 3")
-        self.p2_dobbs = Dobbs(self.bayse_sec_norm_game)
-        self.p2_multLP = MultipleLP(self.bayse_sec_norm_hars_game)
-
-        self.p2_dobbs.solve()
-        self.p2_multLP.solve()
-
-        # part 4 (bayesian norm_form game)
-        print("solving part 4")
-        self.p3_dobbs = Dobbs(self.bayse_norm_game)
-        self.p3_multLP = MultipleLP(self.bayse_norm_hars_game)
+        self.p3_dobbs = Dobbs(self.bayse_sec_norm_game)
+        self.p3_multLP = MultipleLP(self.bayse_sec_norm_hars_game)
 
         self.p3_dobbs.solve()
         self.p3_multLP.solve()
 
-        # part 5
-        print("solving part 5")
-        self.p4_dobbs = Dobbs(self.norm_game)
-        self.p4_multLP = MultipleLP(self.norm_game)
+        # part 4 (bayesian norm_form game)
+        print("solving part 4")
+        self.p4_dobbs = Dobbs(self.bayse_norm_game)
+        self.p4_multLP = MultipleLP(self.bayse_norm_hars_game)
+        self.p4_multSingLP = Multiple_SingleLP(self.bayse_norm_game)
 
         self.p4_dobbs.solve()
         self.p4_multLP.solve()
+        self.p4_multSingLP.solve()
+
+        # part 5
+        print("solving part 5")
+        self.p5_dobbs = Dobbs(self.norm_game)
+        self.p5_multLP = MultipleLP(self.norm_game)
+        self.p5_multSingLP = Multiple_SingleLP(self.norm_game)
+
+        self.p5_dobbs.solve()
+        self.p5_multLP.solve()
+        self.p5_multSingLP.solve()
 
 
 
@@ -132,9 +136,16 @@ class TestSolvers(unittest.TestCase):
         are in agreement.
         """
         # test that every opt_target is the same for all solvers
-        ori_target = self.p1_large_origami.opt_attacked_target
-        ori_milp_target = self.p1_large_origami_milp.opt_attacked_target
-        ers_target = self.p1_large_eraser.opt_attacked_target
+        ori_target = self.p2_large_origami.opt_attacked_target
+        ori_milp_target = self.p2_large_origami_milp.opt_attacked_target
+        ers_target = self.p2_large_eraser.opt_attacked_target
+
+        print("ORIGAMI SOL: {}".format(self.p2_large_origami.solution_time))
+        print("ORIGAMI OH SOL: {}".format(self.p2_large_origami.solution_time_with_overhead))
+        print("ORI_MILP SOL: {}".format(self.p2_large_origami_milp.solution_time))
+        print("ORI_MILP OH SOL: {}".format(self.p2_large_origami_milp.solution_time_with_overhead
+                                           ))
+
 
         self.assertEqual(ori_target,
                          ori_milp_target,
@@ -144,28 +155,28 @@ class TestSolvers(unittest.TestCase):
                          msg="opt target disagree: origami_milp vs. eraser")
 
         # test that coverage is the same for attacked target
-        self.assertAlmostEqual(self.p1_large_origami.opt_coverage[ori_target],
-                               self.p1_large_origami_milp.opt_coverage[ori_milp_target],
+        self.assertAlmostEqual(self.p2_large_origami.opt_coverage[ori_target],
+                               self.p2_large_origami_milp.opt_coverage[ori_milp_target],
                                places=1,
                 msg="cov for attacked target disagree: origami vs. origami_milp")
 
-        self.assertAlmostEqual(self.p1_large_origami.opt_coverage[ori_target],
-                               self.p1_large_eraser.opt_coverage[ers_target],
+        self.assertAlmostEqual(self.p2_large_origami.opt_coverage[ori_target],
+                               self.p2_large_eraser.opt_coverage[ers_target],
                                places=1,
                 msg="cov for attacked target disagree: origami vs. eraser")
         # test that payoff is the same
-        self.assertAlmostEqual(self.p1_large_origami.opt_defender_payoff,
-                               self.p1_large_origami_milp.opt_defender_payoff,
+        self.assertAlmostEqual(self.p2_large_origami.opt_defender_payoff,
+                               self.p2_large_origami_milp.opt_defender_payoff,
                                places=1,
                                msg="payoff disagreement: orig vs. orig-milp")
-        self.assertAlmostEqual(self.p1_large_origami.opt_defender_payoff,
-                               self.p1_large_eraser.opt_defender_payoff,
+        self.assertAlmostEqual(self.p2_large_origami.opt_defender_payoff,
+                               self.p2_large_eraser.opt_defender_payoff,
                                places=1,
                                msg="payoff disagreement: ori vs. eraser")
 
         # test that attackset are the same for origami and origami-milp
-        self.assertEqual(len(self.p1_large_origami.opt_attack_set),
-                         len(self.p1_large_origami_milp.opt_attack_set),
+        self.assertEqual(len(self.p2_large_origami.opt_attack_set),
+                         len(self.p2_large_origami_milp.opt_attack_set),
                          msg="attackset diff. length: origami vs. origami-milp")
 
 
@@ -173,25 +184,48 @@ class TestSolvers(unittest.TestCase):
         """
         Test if opt_defender_payoff is the same across all solutions
         """
-        self.assertAlmostEqual(self.p2_dobbs.opt_defender_payoff,
-                               self.p2_multLP.opt_defender_payoff,
-                               places=1)
-
-    def test_p4(self):
-        """
-        Test if opt_defender_payoff is the same across all solutions
-        """
         self.assertAlmostEqual(self.p3_dobbs.opt_defender_payoff,
                                self.p3_multLP.opt_defender_payoff,
                                places=1)
 
-    def test_p5(self):
+    def test_p4(self):
         """
-        Test if opt_defender_payoff is the same across all solutions
+        Test if bayesian normal form game solvers are in agreement.
         """
+        # test that the expected opt defender payoff is the same
         self.assertAlmostEqual(self.p4_dobbs.opt_defender_payoff,
                                self.p4_multLP.opt_defender_payoff,
                                places=1)
+        self.assertAlmostEqual(self.p4_dobbs.opt_defender_payoff,
+                               self.p4_multSingLP.opt_defender_payoff,
+                               places=1)
+
+        print(self.p4_multSingLP.opt_attacker_pure_strategy)
+
+        # test that opt defender strat. yields the same attacker pure strategy
+        self.assertSequenceEqual(self.p4_dobbs.opt_attacker_pure_strategy,
+                                 self.p4_multSingLP.opt_attacker_pure_strategy)
+
+        self.assertSequenceEqual(self.p4_dobbs.opt_attacker_pure_strategy,
+                                 self.bayse_norm_hars_game.\
+                                 attacker_pure_strategy_tuples[self.p4_multLP.\
+                               opt_attacker_pure_strategy])
+
+    def test_p5(self):
+        """
+        Test agreement between all solvers of non-bayesian normal form games.
+        """
+        # test that the expected opt defender payoff is the same
+        self.assertAlmostEqual(self.p5_dobbs.opt_defender_payoff,
+                               self.p5_multLP.opt_defender_payoff,
+                               places=1)
+        self.assertAlmostEqual(self.p5_dobbs.opt_defender_payoff,
+                               self.p5_multSingLP.opt_defender_payoff,
+                               places=1)
+        # test that opt defender strat. yields the same attacker pure strategy
+        self.assertSequenceEqual(self.p5_dobbs.opt_attacker_pure_strategy,
+                                 self.p5_multSingLP.opt_attacker_pure_strategy)
+        # TODO implement between multlp and others
 
 
 if __name__ == '__main__':

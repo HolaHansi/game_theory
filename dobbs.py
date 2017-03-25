@@ -105,11 +105,13 @@ class Dobbs:
                                                         plp.value(self.z[i,j,0])
                     break
         # derive and save the optimal attacked target for each attacker type
-        self.opt_attacked_targets = np.zeros((self.L))
+        self.opt_attacker_pure_strategy = np.zeros((self.L), dtype=np.int8)
         f = np.vectorize(plp.value)
         qs = f(self.q)
         for l in range(self.L):
-            self.opt_attacked_targets[l] = np.nonzero(qs[:,l])[0][0]
+            self.opt_attacker_pure_strategy[l] = np.nonzero(qs[:,l])[0][0]
+        # convert to tuple
+        self.opt_attacker_pure_strategy = tuple(self.opt_attacker_pure_strategy)
 
         # save solution time with overhead
         self.solution_time_with_overhead = time.time() - start_time

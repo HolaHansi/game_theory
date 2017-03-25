@@ -258,6 +258,9 @@ class SecurityGame:
         self.max_coverage = max_coverage
         self.num_attacker_types = num_attacker_types
 
+        # for comparisons with other algos
+        self.num_attacker_strategies = num_targets
+
         # uniform distribution over attacker types
         self.attacker_type_probability = np.zeros((self.num_attacker_types))
         self.attacker_type_probability += (1.0 / self.num_attacker_types)
