@@ -76,6 +76,11 @@ class OrigamiMILP:
                             plp.value(self.defender_covered[t]) + \
                             (1 - plp.value(self.C[t])) * \
                             plp.value(self.defender_uncovered[t])
+            # print("in milp: defender_Payoffs: {}: {}".format(t,
+            #                                                  defender_payoff))
+            # print("coverage[{}] : {}".format(t, plp.value(self.C[t])))
+            # print("def_covered[{}] : {}".format(t, self.defender_covered[t]))
+            # print("def_uncovered[{}] : {}".format(t, self.defender_uncovered[t]))
 
             if defender_payoff > self.opt_defender_payoff:
                 self.opt_defender_payoff = defender_payoff

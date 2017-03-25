@@ -162,13 +162,13 @@ class NormalFormGame:
         self.attacker_type_probability = self.game.attacker_type_probability
 
         # compute all possible defender strategies i.e. comb. of coverage
-        defender_strategies = list (
+        self.defender_coverage_tuples = list (
                                     itertools.combinations(
                                     range(self.game.num_targets),
                                     self.game.max_coverage)
                                     )
 
-        self.num_defender_strategies = len(defender_strategies)
+        self.num_defender_strategies = len(self.defender_coverage_tuples)
         self.num_attacker_strategies = self.game.num_targets
         self.num_attacker_types = self.game.num_attacker_types
 
@@ -182,7 +182,7 @@ class NormalFormGame:
 
         # calculate the appropriate payoffs
         for t in range(self.game.num_targets):
-            for i, strat in enumerate(defender_strategies):
+            for i, strat in enumerate(self.defender_coverage_tuples):
                 if t in strat:
                     # t is covered
                     self.defender_payoffs[i, t, :] = \
@@ -204,25 +204,25 @@ class NormalFormGame:
 
         # get dimensions of payoff matrices
         self.num_defender_strategies = self.game.num_defender_strategies
-        self.num_attacker_types = self.game.num_attacker_types
         self.num_attacker_strategies = self.game.num_attacker_strategies ** \
-                                        self.num_attacker_types
+                                        self.game.num_attacker_types
+        self.num_attacker_types = 1
 
-        # generate attacker pure strategies
-        attacker_pure_strategies = \
+        # generate pure strategy tuples
+        self.attacker_pure_strategy_tuples = \
             list(itertools.product(*[range(self.game.num_attacker_strategies)
-                                for i in range(self.num_attacker_types)]))
+                                for i in range(self.game.num_attacker_types)]))
 
         # initiate new defender and attacker payoff matrices
         self.defender_payoffs = np.zeros((self.num_defender_strategies,
                                           self.num_attacker_strategies,
-                                          1))
+                                          self.num_attacker_types))
         self.attacker_payoffs = np.zeros((self.num_defender_strategies,
                                           self.num_attacker_strategies,
-                                          1))
+                                          self.num_attacker_types))
 
         # compute payoffs
-        for j, pure_strat in enumerate(attacker_pure_strategies):
+        for j, pure_strat in enumerate(self.attacker_pure_strategy_tuples):
             for i in range(self.num_defender_strategies):
                 self.defender_payoffs[i, j, 0], self.attacker_payoffs[i, j, 0] \
                     = self._get_payoffs(i, pure_strat)
@@ -235,7 +235,7 @@ class NormalFormGame:
         payoff_defender = 0
         payoff_attacker = 0
 
-        for l in range(self.num_attacker_types):
+        for l in range(self.game.num_attacker_types):
             payoff_defender += \
             self.game.defender_payoffs[i, pure_strat[l], l] * \
                 self.game.attacker_type_probability[l]
