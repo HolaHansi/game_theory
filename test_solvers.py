@@ -43,10 +43,18 @@ class TestSolvers(unittest.TestCase):
 
         # part 4
         self.bayse_norm_game = NormalFormGame(num_defender_strategies=10,
-                                         num_attacker_strategies=2,
+                                         num_attacker_strategies=3,
                                          num_attacker_types=3)
 
         self.bayse_norm_hars_game = NormalFormGame(game=self.bayse_norm_game)
+
+        self.bayse_norm_partial_full_game = NormalFormGame(
+            partial_game_from=self.bayse_norm_game,
+            attacker_types=(0,1,2))
+
+        self.bayse_norm_partial_game = NormalFormGame(
+            partial_game_from=self.bayse_norm_game,
+            attacker_types=(1,2))
 
 
         # part 5
@@ -62,12 +70,19 @@ class TestSolvers(unittest.TestCase):
         self.p1_origami_milp = OrigamiMILP(self.sec_game)
         self.p1_dobbs = Dobbs(self.sec_norm_game)
         self.p1_multLP = MultipleLP(self.sec_norm_hars_game)
+        self.p1_multSingLP_sec_game = Multiple_SingleLP(self.sec_game)
+        self.p1_multSingLP_sec_norm_game = Multiple_SingleLP(self.sec_norm_game)
+        self.p1_multSingLP_sec_norm_hars_game = Multiple_SingleLP(
+            self.sec_norm_hars_game)
 
         self.p1_eraser.solve()
         self.p1_origami.solve()
         self.p1_origami_milp.solve()
         self.p1_dobbs.solve()
         self.p1_multLP.solve()
+        self.p1_multSingLP_sec_game.solve()
+        self.p1_multSingLP_sec_norm_game.solve()
+        self.p1_multSingLP_sec_norm_hars_game.solve()
 
         # part 2 (large security game)
         print("solving part 2")
@@ -83,9 +98,11 @@ class TestSolvers(unittest.TestCase):
         print("solving part 3")
         self.p3_dobbs = Dobbs(self.bayse_sec_norm_game)
         self.p3_multLP = MultipleLP(self.bayse_sec_norm_hars_game)
+        self.p3_multSingLP = Multiple_SingleLP(self.bayse_sec_game)
 
         self.p3_dobbs.solve()
         self.p3_multLP.solve()
+        self.p3_multSingLP.solve()
 
         # part 4 (bayesian norm_form game)
         print("solving part 4")
@@ -93,9 +110,22 @@ class TestSolvers(unittest.TestCase):
         self.p4_multLP = MultipleLP(self.bayse_norm_hars_game)
         self.p4_multSingLP = Multiple_SingleLP(self.bayse_norm_game)
 
+        self.p4_dobbs_partial_full = Dobbs(self.bayse_norm_partial_full_game)
+        self.p4_multSingLP_partial_full = \
+            Multiple_SingleLP(self.bayse_norm_partial_full_game)
+
+        self.p4_dobbs_partial = Dobbs(self.bayse_norm_partial_game)
+        self.p4_multSingLP_partial = \
+            Multiple_SingleLP(self.bayse_norm_partial_game)
+
         self.p4_dobbs.solve()
         self.p4_multLP.solve()
         self.p4_multSingLP.solve()
+        self.p4_dobbs_partial.solve()
+        self.p4_dobbs_partial_full.solve()
+        self.p4_multSingLP_partial_full.solve()
+        self.p4_dobbs_partial.solve()
+        self.p4_multSingLP_partial.solve()
 
         # part 5
         print("solving part 5")
@@ -128,7 +158,17 @@ class TestSolvers(unittest.TestCase):
         self.assertAlmostEqual(self.p1_dobbs.opt_defender_payoff,
                                self.p1_origami_milp.opt_defender_payoff,
                                places=1)
-
+        self.assertAlmostEqual(self.p1_dobbs.opt_defender_payoff,
+                               self.p1_multSingLP_sec_game.opt_defender_payoff,
+                               places=1)
+        self.assertAlmostEqual(self.p1_dobbs.opt_defender_payoff,
+                               self.p1_multSingLP_sec_norm_game.\
+                               opt_defender_payoff,
+                               places=1)
+        self.assertAlmostEqual(self.p1_dobbs.opt_defender_payoff,
+                               self.p1_multSingLP_sec_norm_hars_game.\
+                               opt_defender_payoff,
+                               places=1)
 
     def test_p2(self):
         """
@@ -187,11 +227,21 @@ class TestSolvers(unittest.TestCase):
         self.assertAlmostEqual(self.p3_dobbs.opt_defender_payoff,
                                self.p3_multLP.opt_defender_payoff,
                                places=1)
+        self.assertAlmostEqual(self.p3_dobbs.opt_defender_payoff,
+                               self.p3_multSingLP.opt_defender_payoff,
+                               places=1)
 
     def test_p4(self):
         """
         Test if bayesian normal form game solvers are in agreement.
         """
+        # print("sol tim, dob, mltLP vs. Singl")
+        # print(self.p4_dobbs.solution_time)
+        # print(self.p4_multLP.solution_time)
+        # print(self.p4_multSingLP.solution_time)
+
+
+
         # test that the expected opt defender payoff is the same
         self.assertAlmostEqual(self.p4_dobbs.opt_defender_payoff,
                                self.p4_multLP.opt_defender_payoff,
@@ -199,17 +249,22 @@ class TestSolvers(unittest.TestCase):
         self.assertAlmostEqual(self.p4_dobbs.opt_defender_payoff,
                                self.p4_multSingLP.opt_defender_payoff,
                                places=1)
-
-        print(self.p4_multSingLP.opt_attacker_pure_strategy)
+        self.assertAlmostEqual(self.p4_dobbs_partial_full.opt_defender_payoff,
+                               self.p4_multSingLP_partial_full.\
+                               opt_defender_payoff,
+                               places=1)
+        self.assertAlmostEqual(self.p4_dobbs_partial.opt_defender_payoff,
+                               self.p4_multSingLP_partial.opt_defender_payoff,
+                               places=1)
 
         # test that opt defender strat. yields the same attacker pure strategy
         self.assertSequenceEqual(self.p4_dobbs.opt_attacker_pure_strategy,
                                  self.p4_multSingLP.opt_attacker_pure_strategy)
 
-        self.assertSequenceEqual(self.p4_dobbs.opt_attacker_pure_strategy,
-                                 self.bayse_norm_hars_game.\
-                                 attacker_pure_strategy_tuples[self.p4_multLP.\
-                               opt_attacker_pure_strategy])
+        # self.assertSequenceEqual(self.p4_dobbs.opt_attacker_pure_strategy,
+        #                          self.bayse_norm_hars_game.\
+        #                          attacker_pure_strategy_tuples[self.p4_multLP.\
+        #                        opt_attacker_pure_strategy])
 
     def test_p5(self):
         """
@@ -225,7 +280,8 @@ class TestSolvers(unittest.TestCase):
         # test that opt defender strat. yields the same attacker pure strategy
         self.assertSequenceEqual(self.p5_dobbs.opt_attacker_pure_strategy,
                                  self.p5_multSingLP.opt_attacker_pure_strategy)
-        # TODO implement between multlp and others
+        self.assertEqual(self.p5_dobbs.opt_attacker_pure_strategy[0],
+                         self.p5_multLP.opt_attacker_pure_strategy)
 
 
 if __name__ == '__main__':

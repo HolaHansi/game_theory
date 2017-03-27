@@ -101,7 +101,13 @@ class NormalFormGame:
         in normalform.
         Otherwise, generate a random game given arguments.
         """
-        if "game" in kwargs.keys():
+        if "partial_game_from" in kwargs.keys():
+            # generate a partial game from the given game and attacker_types
+            self.game = kwargs['partial_game_from']
+            self.attacker_types = kwargs['attacker_types']
+            self._create_partial_game()
+
+        elif "game" in kwargs.keys():
             self.game = kwargs['game']
 
             if self.game.type == "compact":
@@ -207,6 +213,7 @@ class NormalFormGame:
         self.num_attacker_strategies = self.game.num_attacker_strategies ** \
                                         self.game.num_attacker_types
         self.num_attacker_types = 1
+        self.attacker_type_probability = np.array([1])
 
         # generate pure strategy tuples
         self.attacker_pure_strategy_tuples = \
@@ -245,6 +252,31 @@ class NormalFormGame:
 
         return (payoff_defender, payoff_attacker)
 
+    def _create_partial_game(self):
+        """
+        Make a partial game out of game and attacker_types.
+        """
+        self.defender_payoffs = self.game.defender_payoffs[:,:,
+                                                    list(self.attacker_types)]
+        self.attacker_payoffs = self.game.attacker_payoffs[:,:,
+                                                    list(self.attacker_types)]
+
+        self.num_defender_strategies = self.game.num_defender_strategies
+        self.num_attacker_strategies = self.game.num_attacker_strategies
+        self.num_attacker_types = len(self.attacker_types)
+        self.attacker_type_probability = np.zeros((self.num_attacker_types))
+
+        # normalize attacker type probabilities
+        # Save the the probability of this typespace
+        self.prob_typespace = float(
+            self.game.attacker_type_probability[list(self.attacker_types)].sum())
+
+        for i, t in enumerate(self.attacker_types):
+            self.attacker_type_probability[i] = \
+                self.game.attacker_type_probability[t] / self.prob_typespace
+
+
+# TODO enable SecurityGame to deal with partial games
 class SecurityGame:
     """
     A security game is a non-bayesian game in which the payoffs for targets
@@ -253,32 +285,70 @@ class SecurityGame:
     utilities for the attacker, whilst uncovered targets yield negative
     utilities for the defender and positive utilities for the attacker.
     """
-    def __init__(self, num_targets, max_coverage, num_attacker_types = 1):
-        self.num_targets = num_targets
-        self.max_coverage = max_coverage
-        self.num_attacker_types = num_attacker_types
+    def __init__(self, **kwargs):
+        if "partial_game_from" in kwargs.keys():
+            self.game = kwargs['partial_game_from']
+            self.attacker_types = kwargs['attacker_types']
+            self._create_partial_game()
+        else:
+            self.num_targets = kwargs['num_targets']
+            self.max_coverage = kwargs['max_coverage']
+            self.num_attacker_types = kwargs['num_attacker_types']
 
-        # for comparisons with other algos
-        self.num_attacker_strategies = num_targets
+            # for comparisons with other algos
+            self.num_attacker_strategies = self.num_targets
 
-        # uniform distribution over attacker types
-        self.attacker_type_probability = np.zeros((self.num_attacker_types))
-        self.attacker_type_probability += (1.0 / self.num_attacker_types)
+            # uniform distribution over attacker types
+            self.attacker_type_probability = np.zeros((self.num_attacker_types))
+            self.attacker_type_probability += (1.0 / self.num_attacker_types)
 
-        # generate two arrays of random floats for defender and attacker
-        attacker_random = np.random.rand(2,num_targets, num_attacker_types)
-        defender_randoms = np.random.rand(2,num_targets, num_attacker_types)
+            # generate two arrays of random floats for defender and attacker
+            attacker_random = np.random.rand(2,
+                                             self.num_targets,
+                                             self.num_attacker_types)
+            defender_randoms = np.random.rand(2,
+                                              self.num_targets,
+                                              self.num_attacker_types)
 
-        # for attacker uncovered targets yield positive utilities, and covered
-        # yields negative utilities.
-        self.attacker_uncovered = attacker_random[0,:,:] * 100
-        self.attacker_covered = attacker_random[1,:,:] * -100
+            # for attacker uncovered targets yield positive utilities, and covered
+            # yields negative utilities.
+            self.attacker_uncovered = attacker_random[0,:,:] * 100
+            self.attacker_covered = attacker_random[1,:,:] * -100
 
-        # for defender uncovered targets yield negative utilities, and covered
-        # targets yield positive utilities.
-        self.defender_uncovered = defender_randoms[0,:,:] * -100
-        self.defender_covered = defender_randoms[1,:,:] * 100
+            # for defender uncovered targets yield negative utilities, and covered
+            # targets yield positive utilities.
+            self.defender_uncovered = defender_randoms[0,:,:] * -100
+            self.defender_covered = defender_randoms[1,:,:] * 100
 
         # store the type of this representation
         self.type = "compact"
 
+    def _create_partial_game(self):
+        """
+        Make a partial game out of game and attacker_types.
+        """
+        # get payoffs
+        self.defender_uncovered = self.game.defender_uncovered[:,
+                                                    list(self.attacker_types)]
+        self.defender_covered = self.game.defender_covered[:,
+                                                    list(self.attacker_types)]
+        self.attacker_uncovered = self.game.attacker_uncovered[:,
+                                                    list(self.attacker_types)]
+        self.attacker_covered = self.game.attacker_covered[:,
+                                                    list(self.attacker_types)]
+        # get compact values
+        self.max_coverage = self.game.max_coverage
+        self.num_targets = self.game.num_targets
+        self.num_attacker_strategies = self.game.num_attacker_strategies
+
+        self.num_attacker_types = len(self.attacker_types)
+        self.attacker_type_probability = np.zeros((self.num_attacker_types))
+
+        # normalize attacker type probabilities
+        # Save the the probability of this typespace
+        self.prob_typespace = float(
+            self.game.attacker_type_probability[list(self.attacker_types)].sum())
+
+        for i, t in enumerate(self.attacker_types):
+            self.attacker_type_probability[i] = \
+                self.game.attacker_type_probability[t] / self.prob_typespace
