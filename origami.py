@@ -70,11 +70,6 @@ class Origami:
             left -= added_coverage.sum()
             next_target += 1
 
-        # either one of the two termination conditions occured, or
-        # every target has been added to the attackset.
-        # allocate the remaining coverage using the ratios of each
-        # target in the attackset.
-
         # save the attackset
         self.attack_set = sorted_targets[:next_target]
 
@@ -113,6 +108,10 @@ class Origami:
 
         # the expected defender payoff is the max payoff
         self.opt_defender_payoff = payoffs.max()
+
+        # save the payoffs for branch-and-bound
+        self.opt_defender_payoffs = payoffs
+
         # the attacked target is the target that yield highest defender payoff
         self.opt_attacked_target = self.attack_set[np.argmax(payoffs)]
 
