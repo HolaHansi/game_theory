@@ -5,7 +5,7 @@ from multipleLP import MultipleLP, Multiple_SingleLP
 from eraser import Eraser
 from origami import Origami
 from origami_milp import OrigamiMILP
-
+from hbgs import HBGS
 
 class TestSolvers(unittest.TestCase):
     @classmethod
@@ -23,8 +23,10 @@ class TestSolvers(unittest.TestCase):
 
         """
         # construct games
-        # part 1
-        self.sec_game = SecurityGame(5,3,1)
+        # part 1
+        self.sec_game = SecurityGame(num_targets=5,
+                                     max_coverage=3,
+                                     num_attacker_types=1)
         self.sec_norm_game = NormalFormGame(game=self.sec_game,
                                             harsanyi=False)
 
@@ -32,10 +34,14 @@ class TestSolvers(unittest.TestCase):
 
 
         # part 2
-        self.large_sec_game = SecurityGame(100, 30,1)
+        self.large_sec_game = SecurityGame(num_targets=100,
+                                           max_coverage=30,
+                                           num_attacker_types=1)
 
         # part 3
-        self.bayse_sec_game = SecurityGame(5,3,2)
+        self.bayse_sec_game = SecurityGame(num_targets=5,
+                                           max_coverage=3,
+                                           num_attacker_types=2)
         self.bayse_sec_norm_game = NormalFormGame(game=self.bayse_sec_game,
                                             harsanyi=False)
         self.bayse_sec_norm_hars_game = NormalFormGame(
@@ -99,10 +105,16 @@ class TestSolvers(unittest.TestCase):
         self.p3_dobbs = Dobbs(self.bayse_sec_norm_game)
         self.p3_multLP = MultipleLP(self.bayse_sec_norm_hars_game)
         self.p3_multSingLP = Multiple_SingleLP(self.bayse_sec_game)
+        self.p3_hbgs = HBGS(self.bayse_sec_game)
+        self.p3_hbgs_origami = HBGS(self.bayse_sec_game, True)
+        self.p3_hbgs_norm = HBGS(self.bayse_sec_norm_game)
 
         self.p3_dobbs.solve()
         self.p3_multLP.solve()
         self.p3_multSingLP.solve()
+        self.p3_hbgs.solve()
+        self.p3_hbgs_origami.solve()
+        self.p3_hbgs_norm.solve()
 
         # part 4 (bayesian norm_form game)
         print("solving part 4")
@@ -118,6 +130,8 @@ class TestSolvers(unittest.TestCase):
         self.p4_multSingLP_partial = \
             Multiple_SingleLP(self.bayse_norm_partial_game)
 
+        self.p4_hbgs = HBGS(self.bayse_norm_game)
+
         self.p4_dobbs.solve()
         self.p4_multLP.solve()
         self.p4_multSingLP.solve()
@@ -126,6 +140,7 @@ class TestSolvers(unittest.TestCase):
         self.p4_multSingLP_partial_full.solve()
         self.p4_dobbs_partial.solve()
         self.p4_multSingLP_partial.solve()
+        self.p4_hbgs.solve()
 
         # part 5
         print("solving part 5")
@@ -230,6 +245,15 @@ class TestSolvers(unittest.TestCase):
         self.assertAlmostEqual(self.p3_dobbs.opt_defender_payoff,
                                self.p3_multSingLP.opt_defender_payoff,
                                places=1)
+        self.assertAlmostEqual(self.p3_hbgs.opt_defender_payoff,
+                               self.p3_dobbs.opt_defender_payoff,
+                               places=1)
+        self.assertAlmostEqual(self.p3_hbgs_origami.opt_defender_payoff,
+                               self.p3_dobbs.opt_defender_payoff,
+                               places=1)
+        self.assertAlmostEqual(self.p3_hbgs_norm.opt_defender_payoff,
+                               self.p3_dobbs.opt_defender_payoff,
+                               places=1)
 
     def test_p4(self):
         """
@@ -256,7 +280,9 @@ class TestSolvers(unittest.TestCase):
         self.assertAlmostEqual(self.p4_dobbs_partial.opt_defender_payoff,
                                self.p4_multSingLP_partial.opt_defender_payoff,
                                places=1)
-
+        self.assertAlmostEqual(self.p4_hbgs.opt_defender_payoff,
+                               self.p4_dobbs.opt_defender_payoff,
+                               places=1)
         # test that opt defender strat. yields the same attacker pure strategy
         self.assertSequenceEqual(self.p4_dobbs.opt_attacker_pure_strategy,
                                  self.p4_multSingLP.opt_attacker_pure_strategy)

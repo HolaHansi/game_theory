@@ -14,6 +14,9 @@ class Multiple_SingleLP:
             range(game.num_attacker_strategies),
             repeat=game.num_attacker_types)
 
+        # the accumulated LP solve time
+        self.solution_time = 0
+
         # Create an LP for every attacker pure strategy
         self.LPs = []
         for pure_strat in self.attacker_pure_strategies:
@@ -26,6 +29,7 @@ class Multiple_SingleLP:
         if self.type == "normal":
             for lp in self.LPs:
                 lp.solve()
+                self.solution_time += lp.solution_time
                 if lp.opt_defender_payoff > self.opt_defender_payoff:
                     self.opt_defender_payoff = lp.opt_defender_payoff
                     self.opt_defender_mixed_strategy = lp.opt_defender_mixed_strategy
@@ -33,13 +37,14 @@ class Multiple_SingleLP:
         elif self.type == "compact":
             for lp in self.LPs:
                 lp.solve()
+                self.solution_time += lp.solution_time
                 if lp.opt_defender_payoff > self.opt_defender_payoff:
                     self.opt_defender_payoff = lp.opt_defender_payoff
                     self.opt_coverage = lp.opt_coverage
                     self.opt_defender_mixed_strategy = lp.opt_defender_mixed_strategy
                     self.opt_attacker_pure_strategy = lp.pure_strat
 
-        self.solution_time = time.time() - start_time
+        self.solution_time_with_overhead = time.time() - start_time
 
 class SingleLP:
     """

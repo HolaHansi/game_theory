@@ -3,32 +3,30 @@ import numpy as np
 
 class PatrolGame:
     """
-    A class implementing the patrol game as specified
+    Class implementing the patrol game as specified
     in "An Efficient Heuristic for Security Against Multiple Adversaries in Stackelberg
     Games" Paruchi et al.
-    The PatrolGame is a bayesian stackelberg game and holds the following values:
+    The PatrolGame is a bayesian normal-form stackelberg game and holds the
+    following values:
     m: number of houses
     d: length of patrol
-    num_adversaries: possible types of adversaries
+    num_attacker_types: number of attacker types
     v_x[l,m]: security agent's valulation of house m when facing adversary l
     v_q[l,m]: Adversary's valuation of house m when of type l
     c_x[l]: security agent's reward for catching adversary of type l
     c_q[l]: Adversaries cost of getting caught when of type l
-    TODO: Finish this description
-
-
     """
-    def __init__(self, m, d, num_adversaries):
+    def __init__(self, m, d, num_attacker_types):
         # save args as instance variables
         self.m = m
         self.d = d
-        self.num_adversaries = num_adversaries
+        self.num_attacker_types = num_attacker_types
         # generate random valuations
-        self.v_x = np.random.rand(num_adversaries, m)
-        self.v_q = np.random.rand(num_adversaries, m)
+        self.v_x = np.random.rand(num_attacker_types, m)
+        self.v_q = np.random.rand(num_attacker_types, m)
         # and costs
-        self.c_x = np.random.rand(num_adversaries)
-        self.c_q = np.random.rand(num_adversaries)
+        self.c_x = np.random.rand(num_attacker_types)
+        self.c_q = np.random.rand(num_attacker_types)
         # - generate pure defender strategies
         # targets are indexed 0 to m-1
         targets = np.arange(m)
@@ -44,6 +42,10 @@ class PatrolGame:
         # - generate pure attacker strategies
         self.Q = np.arange(m)
 
+        # save num of strategies
+        self.num_defender_strategies = len(self.X)
+        self.num_attacker_strategies = len(self.Q)
+
         # - generate Pl probabilitis that robber is caught for each house
         # along the d-path
         # assuming linearity
@@ -51,19 +53,21 @@ class PatrolGame:
         for index in range(len(self.Pl)):
             self.Pl[index] = 1 - (float((index+1)) / (d+1))
         # - generate payoff matrices
-        self.attacker_payoffs = np.ndarray(shape=(len(self.X),
-                                                 len(self.Q),
-                                                 self.num_adversaries),
+        self.attacker_payoffs = np.ndarray(shape=(self.num_defender_strategies,
+                                                 self.num_attacker_strategies,
+                                                 self.num_attacker_types),
                                           dtype=float
                                           )
-        self.defender_payoffs = np.ndarray(shape=(len(self.X),
-                                                 len(self.Q),
-                                                 self.num_adversaries),
+        self.defender_payoffs = np.ndarray(shape=(self.num_defender_strategies,
+                                                 self.num_attacker_strategies,
+                                                 self.num_attacker_types),
                                           dtype=float
                                           )
-        for a in range(self.num_adversaries):
-            attacker_payoff = np.zeros((len(self.X), len(self.Q)))
-            defender_payoff = np.zeros((len(self.X), len(self.Q)))
+        for a in range(self.num_attacker_types):
+            attacker_payoff = np.zeros((self.num_defender_strategies,
+                                        self.num_attacker_strategies))
+            defender_payoff = np.zeros((self.num_defender_strategies,
+                                        self.num_attacker_strategies))
             for i in range(len(self.X)):
                 for j in range(len(self.Q)):
                     if j in self.X[i]:
@@ -76,6 +80,7 @@ class PatrolGame:
                     else:
                         attacker_payoff[i,j] = self.v_q[a,j]
                         defender_payoff[i,j] = -self.v_x[a,j]
+
             # normalize payoffs
             attacker_payoff -= np.amin(attacker_payoff)
             attacker_payoff = attacker_payoff / (np.amax(attacker_payoff) - \
@@ -89,9 +94,11 @@ class PatrolGame:
             self.defender_payoffs[:,:,a] = defender_payoff
 
         # generate probability distribution over adversaries
-        # ASSUMPTION: uniform distribution
-        self.adversary_probability = np.zeros(self.num_adversaries)
-        self.adversary_probability[:] = 1.0 / self.num_adversaries
+        # assume uniform distribution.
+        self.attacker_type_probability = np.zeros(self.num_attacker_types)
+        self.attacker_type_probability[:] = 1.0 / self.num_attacker_types
+
+        self.type = "normal"
 
 class NormalFormGame:
     def __init__(self, **kwargs):
